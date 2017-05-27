@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Demo-1</title>
+  <link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/themes/smoothness/jquery-ui.css">
+  <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css">
+  <link rel="stylesheet" href="../../node_modules/jsplumb/dist/css/jsplumbtoolkit-defaults.css">
+  <link rel="stylesheet" href="../css/demo-1.css">
+</head>
+<body>  
+  <div class="info">
+    <ul>
+      <li><button id='addagent' type="button"><i class="fa fa-plus fa-fw"></i>&nbsp; Add Node</button></li>
+      <li><button id='saveall' type="button"><i class="fa fa-save fa-fw"></i>&nbsp; Save</button></li>
+      <li><button id='loadall' type="button"><i class="fa fa-hdd-o fa-fw"></i>&nbsp; Load</button></li>
+      <li><button id='removeall' type="button"><i class="fa fa-trash fa-fw"></i>&nbsp; Remove All</button></li>
+      <hr />
+      <!--<li><button id='stuff' type="button"><i class="fa fa-calculator fa-fw"></i>&nbsp; Calculate intersections</button></li>-->
+      <li><button id='togglejson' type="button"><i class="fa fa-file-code-o fa-fw"></i>&nbsp; Toggle Saved JSON</button></li>
+      <li><button id='toggletouch' type="button"><i class="fa fa-hand-o-up fa-fw"></i>&nbsp; Toggle Touch Friendly</button></li>
+      <li><button id='togglehelp' type="button"><i class="fa fa-question fa-fw"></i>&nbsp; Toggle Help</button></li>
+      <hr />
+      <li><div class="intersect"><i class="fa fa-fw"></i>&nbsp; Lines intersecting</div></li>
+    </ul>
+  </div>
+
+  <div id="container"></div>
+
+  <textarea id="json-output">{"agents":[{"blockId":"node0","positionX":79,"positionY":190},{"blockId":"node1","positionX":416,"positionY":124},{"blockId":"node2","positionX":103,"positionY":53},{"blockId":"node3","positionX":350,"positionY":242},{"blockId":"node5","positionX":196,"positionY":285}],"connections":[{"pageSourceId":"innernode0","pageTargetId":"innernode1"},{"pageSourceId":"innernode2","pageTargetId":"innernode3"},{"pageSourceId":"innernode2","pageTargetId":"innernode5"}]}</textarea>
+
+  <div class="help">
+    <h2>Moving a node</h2>
+    <p>- <u>Hover</u> over a node, <u>click</u> on the <span class="blue">blue</span> region and <u>drag</u></p>
+    <p>- When 'touch friendly' is toggled <u>touch</u> the visible <span class="blue">blue</span> region and <u>drag</u></p>
+    <br />
+    <h2>Creating a connection</h2>
+    <p>- <u>Hover</u> over a node, <u>click</u> on the <span class="orange">orange</span> region and <u>drag</u> to another <span class="orange">orange</span> region on a different node</p>
+    <br />
+    <h2>Removing all nodes</h2>
+    <p>- <u>Click</u> 'Toggle Saved JSON' text area, <u>delete</u> all text, <u>click</u> Load</p>
+  </div>
+
+  <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsPlumb/1.4.1/jquery.jsPlumb-1.4.1-all-min.js"></script>
+  <script>
+    // touch aid
+
+    jsPlumb.ready(function() {
+
+      // Use this to keep track of which node index to create next
+      var i = 0;
+
+      // jsPlumb defaults
+      jsPlumb.Defaults.Container = $("#container");
+      jsPlumb.Defaults.PaintStyle = { strokeStyle:"#9C59B8", lineWidth:1 };
+      jsPlumb.Defaults.EndpointStyle = { radius:1, fillStyle:"#9C59B8" };
+
+      // Check and remove duplicate/redundant connections
+      jsPlumb.bind('connection', function (info) {
+        var con = info.connection;
+        
+        // List of connections from source to target
+        var arr = jsPlumb.select({ source: con.sourceId, target: con.targetId });
+        // List of connections from target to source
+        var arr2 = jsPlumb.select({ source: con.targetId, target: con.sourceId });
+        
+        // If more than 1 connection exists then it is a duplicate and 
+        // should be removed
+        if (arr.length + arr2.length > 1) {
+          jsPlumb.detach(con);
+          return;
+        }
+
+        // If the source is the target it is a circular stream
+        if (con.sourceId == con.targetId) {
+          jsPlumb.detach(con);
+          return;
+        }
+      });
+
+      // On mousemove check if lines intersect (ideally this should be 
+      // checked when objects are dragged)
+      $('#container').mousemove(function( event ) {
+        checkIfAnyLinesIntersect();
+      });
+
+      // Adds new node
+      $('#addagent').click(function(e) {
+        var block_id = 'node' + i;
+        addNode(block_id);
+        // Place this new node not wedged into the corner of the container
+        repositionElement(block_id, 25, 25)
+        i++;
+      });
+
+      // Saves the nodes diagram
+      $('#saveall').click(function(e) {
+        saveAll();
+      });
+
+      // Loads the saved instance of a nodes diagram
+      $('#loadall').click(function(e) {
+        loadAll();
+      });
+      
+      // Loads the saved instance of a nodes diagram
+      $('#removeall').click(function(e) {
+        // Detach every connection first, otherwise they will inconspicuously stack
+        jsPlumb.detachEveryConnection();
+
+        // Delete everything from the container
+        $('#container').text("");
+        
+        i = 0;
+      });
+
+      // Use this button for custom stuff....
+      $('#stuff').click(function(e) {
+        MoveNode();
+      });
+
+      // Toggles json textarea display
+      $('#togglejson').click(function(e) {
+        $('.help').hide();
+        $('#json-output').toggle();
+      });
+
+      // Toggles touch friendly divs to make it easier to drag the nodes on touch devices
+      $('#toggletouch').click(function(e) {
+        $('#container').toggleClass('touchaid');
+      });
+
+      // Toggles help
+      $('#togglehelp').click(function(e) {
+        $('#json-output').hide();
+        $('.help').toggle();
+      });
+
+      // Checks if any jsPlumb lines intersect
+      function checkIfAnyLinesIntersect() {
+        // Remove all divs that represent an intersection
+        $(".point").remove();
+        $('.intersect').removeClass('active');
+
+        var connection_points = [];
+
+        // Add all the point-pairs (lines segmnets) into an array
+        $.each(jsPlumb.getConnections(), function (idx, connection) {
+          connection_points.push(connection.endpoints);
+        });
+
+        // If there is only 1 connection don't check any futher
+        if (connection_points.length <= 1) return;
+
+        var j,k;
+        for (j = 0; j < connection_points.length-1; j++) {
+          for (k = 1; k < connection_points.length; k++) {
+            if (j == k) continue;
+            var do_lines_intersect = doLineSegmentsIntersect(connection_points[j], connection_points[k])
+
+            do_lines_intersect && $('.intersect').removeClass('active').addClass('active') 
+
+            do_lines_intersect && findIntersectingPoint(connection_points[j], connection_points[k]);
+          }
+        }
+      }
+
+      // Returns if the given line segmnets intersect or not
+      // REFERENCE : [1]
+      function doLineSegmentsIntersect(lineseg1, lineseg2) {
+        if(CCW(lineseg1[0],lineseg2[0],lineseg2[1]) == CCW(lineseg1[1],lineseg2[0],lineseg2[1])) {
+          return false;
+        }
+        else if (CCW(lineseg1[0],lineseg1[1],lineseg2[0]) == CCW(lineseg1[0],lineseg1[1],lineseg2[1])) {
+          return false;
+        }
+        else {
+          return true;
+        }
+      }
+
+      // Returns if the points are in counterclockwise order
+      function CCW(p1, p2, p3) {
+        // Convert the points into a matrix format for calculating the determinant
+        var m = makeDeterminant(p1, p2, p3);
+
+        // if the determinant is greater than 0 then counterclockwise
+        // REFERENCE : [2]
+        if (calculateDeterminant(m) > 0) {
+          return true;
+        } else {
+          return false; 
+        }
+      }
+
+      // Converts given points into matrix-like (multi dim) format (for calculate the determinant).
+      // Note the format:
+      // | 1, a ,b |
+      // | 1, c, d |
+      // | 1, e, f |
+      function makeDeterminant(p1, p2, p3) {
+        return [ [1, p1.endpoint.x, p1.endpoint.y]
+                ,[1, p2.endpoint.x, p2.endpoint.y]
+                ,[1, p3.endpoint.x, p3.endpoint.y]
+               ];
+      }
+
+      // Calculates the determinant of the given matrix
+      function calculateDeterminant(m) {
+        return (  m[0][0] * (m[1][1]*m[2][2] - m[1][2]*m[2][1])
+                - m[0][1] * (m[1][0]*m[2][2] - m[1][2]*m[2][0])
+                + m[0][2] * (m[1][0]*m[2][1] - m[1][1]*m[2][0])
+               );
+      }
+
+      // Finds the intersecting point of two lines (basic algebra)
+      function findIntersectingPoint(lineseq1, lineseq2) {
+        var p1 = lineseq1[0];
+        var p2 = lineseq1[1];
+        var p3 = lineseq2[0];
+        var p4 = lineseq2[1];
+
+        var A1 = (p1.endpoint.y - p2.endpoint.y)/(p1.endpoint.x - p2.endpoint.x);
+        var A2 = (p3.endpoint.y - p4.endpoint.y)/(p3.endpoint.x - p4.endpoint.x);
+        var b1 = p1.endpoint.y - A1 * p1.endpoint.x;
+        var b2 = p3.endpoint.y - A2 * p3.endpoint.x;
+
+        var Xa = (b2 - b1) / (A1 - A2);
+        var Ya = A1 * Xa + b1;
+
+        addIntersectingPoint(Xa, Ya);
+      }
+
+      // Adds a point div to the container (used to showing where the lines intersect)
+      function addIntersectingPoint(x, y) {
+        var newDiv = $('<div>').addClass('point');
+        newDiv.css({
+          'top': y,
+          'left': x
+        });
+        $('#container').append(newDiv);
+      }
+
+      // Saves the position of all nodes / connections as a json in a textarea.
+      function saveAll() {
+        // Saving all of the nodes' parameters
+        var nodes = []
+        $(".node").each(function (idx, elem) {
+          var $elem = $(elem);
+          nodes.push({
+            blockId: $elem.attr('id'),
+            positionX: parseInt($elem.css("left"), 10),
+            positionY: parseInt($elem.css("top"), 10)
+          });
+        });
+
+        // Saving all of the connections' parameters
+        var connections = [];
+        $.each(jsPlumb.getConnections(), function (idx, connection) {
+          connections.push({
+            pageSourceId: connection.sourceId,
+            pageTargetId: connection.targetId
+          });
+        });
+
+        var nodes_graph = {};
+        nodes_graph.agents = nodes;
+        nodes_graph.connections = connections;
+        var nodes_graph_json = JSON.stringify(nodes_graph);
+
+        $('#json-output').val(nodes_graph_json);
+      }
+
+      // Loads the positions of all nodes / connections from json stored in textarea.
+      // If there is no json nothing will be loaded.
+      function loadAll() {
+        // Detach every connection first, otherwise they will inconspicuously stack
+        jsPlumb.detachEveryConnection();
+
+        // Delete everything from the container
+        $('#container').text("");
+
+        var nodes_graph_json = $('#json-output').val();
+        var nodes_graph = JSON.parse(nodes_graph_json);
+
+        // Load nodes first
+        var nodes = nodes_graph.agents;
+        $.each(nodes, function( index, elem ) {
+          addNode(elem.blockId);
+          repositionElement(elem.blockId, elem.positionX, elem.positionY);
+          i = parseInt(elem.blockId.substr(4)) + 1;
+        });
+
+        // Then load the connections
+        var connections = nodes_graph.connections;
+        $.each(connections, function( index, elem ) {
+          jsPlumb.connect({
+            source: elem.pageSourceId,
+            target: elem.pageTargetId,
+            anchor:[ "Perimeter", { shape:"Circle" } ],
+            connector:"Straight"
+          });
+        });
+
+        // For the sake of it, redraw everything
+        jsPlumb.repaintEverything();
+
+        // Finally, check if any lines are intersect (incase the cursor has
+        // not moved inside the container yet)
+        checkIfAnyLinesIntersect();
+      }
+
+      // Adds node to container div
+      function addNode(id) {
+        var newNode = $('<div>').attr('id', id).addClass('node');
+        $('#container').append(newNode);
+
+        jsPlumb.draggable(newNode, {
+          containment: 'parent',
+        });
+
+        // Add an inner div which can be used as a target/source
+        AddInner(newNode, id); 
+      }
+
+      // Adds source/target div inside node
+      function AddInner(parent, id) {
+        var newInner = $('<div>').attr('id','inner' + id).addClass('inner')
+
+        // The id is in the format 'node#', so strip the first 4 chars
+        newInner.text(id.substr(4));
+        $(parent).append(newInner);
+
+        // The div can be a target for a connection
+        jsPlumb.makeTarget(newInner, {
+          anchor:[ "Perimeter", { shape:"Circle" } ],
+          connector:"Straight"
+        });
+
+        // The div can be a source for a connection
+        jsPlumb.makeSource(newInner, {
+          anchor:[ "Perimeter", { shape:"Circle" } ],
+          connector:"Straight"
+        });
+      }
+
+      // Repositions a div/element (used when loading node graph)
+      function repositionElement(id, posX, posY){
+        $('#'+id).css('left', posX);
+        $('#'+id).css('top', posY);
+      }
+
+      // Hardcoded function for codepen preview - one time use
+      function MoveNode() {
+        jsPlumb.animate("node2", {"left": 343,"top": 69},{duration:2000});
+        $(".point").animate({left:"300px", top:"161px"}, 2150);
+        $(".point").first().stop().animate({left:"358px", top:"150px"}, 2150);
+      }
+
+      loadAll();
+      MoveNode();
+    });
+
+    // [1] http://web.engr.illinois.edu/~jeffe/teaching/373/notes/x06-sweepline.pdf
+    // [2] http://web.engr.illinois.edu/~jeffe/teaching/compgeom/notes/01-convexhull.
+    // [3] http://silentmatt.com/rectangle-intersection/
+  </script>
+</body>
+</html>

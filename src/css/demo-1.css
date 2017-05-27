@@ -1,0 +1,160 @@
+.blue {
+  padding: 0 10px;
+  border-radius: 5px;
+  background: #0180CD;
+  background: linear-gradient(to bottom,  #006ECE 0%,#00A2D3 100%);
+  color: #222;
+}
+.orange {
+  padding: 0 10px;
+  border-radius: 5px;
+  background: #dd403c;
+  background: linear-gradient(to bottom,  #dd403c 0%,#f1952f 100%);
+  color: #222;
+}
+.help {
+  padding: 20px;
+  position: absolute;
+  bottom: 0;
+  font-family: Arial;
+  color: #ffffff;
+  display: none;
+}
+.info {
+  padding: 10px;
+  position: absolute;
+  right: 0;
+  border: 1px solid #fff;
+  z-index: 100;
+  font-family: 'Arial';
+  font-size: 16px;
+}
+.info ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+.info ul div {
+  padding: 0 10px;
+}
+hr {
+  border: none;
+  border-bottom: 1px solid #555;
+}
+.intersect {
+  color: #555;
+}
+.active {
+  color: #27AE61;
+}
+.point:nth-child(2) {
+  background: red !important;
+}
+.intersect .fa:before {
+   font-family: FontAwesome;
+   content: "\f00d";
+}
+.active .fa:before {
+   font-family: FontAwesome;
+   content: "\f00c";
+}
+body, html {
+  padding:0;
+  margin: 0;
+  background:#393A4F;
+  height: 100%;
+}
+.point {
+  background: transparent;
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #ffffff;
+  margin-left: -6px;
+  margin-top: -6px;
+  border-radius: 50%;
+}
+#json-output {
+  width: calc(100% - 8px);
+  height: 200px;
+  position: absolute;
+  bottom: 0;
+  display: none;
+}
+button {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 16px;
+}
+button:hover {
+  border: 1px solid #ffffff;
+}
+#container {
+  position: relative;
+  border: 1px solid #877;
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
+}
+.node {
+  cursor: move;
+  padding: 2px;
+  background: #0180CD;
+  background: linear-gradient(to bottom,  #006ECE 0%,#00A2D3 100%);
+  position: absolute;
+  border-radius: 50%;
+  -moz-box-shadow:    0px 0px 13px -6px #000;
+  -webkit-box-shadow: 0px 0px 13px -6px #000;
+  box-shadow:         0px 0px 13px -6px #000;
+  z-index: 100;
+}
+/* 
+   forced to use this approach instead of simply .node:hover {padding:25px}
+   since the offsets of the inner node become calculated wrongly due to the
+   way jsPlumb does the calculations
+*/
+.node:hover:before {
+  content:'';
+  position: absolute;
+  background: red;
+  padding: 30px;
+  margin-left: -20px;
+  margin-top: -20px;
+  background: #0180CD;
+  background: linear-gradient(to bottom,  #006ECE 0%,#00A2D3 100%);
+  border-radius: 50%;
+  z-index: -1;
+}
+/* aid for touch devices - a bigger area to grab the node */
+#container .node:after {
+  content: '';
+  display: none;
+  height: 30px;
+  width: 10px;
+  margin-left: 5px;
+  background: #00A2D3;
+  position: absolute;
+  -webkit-border-bottom-right-radius: 5px;
+  -webkit-border-bottom-left-radius: 5px;
+
+  -moz-border-radius-bottomright: 5px;
+  -moz-border-radius-bottomleft: 5px;
+
+  border-bottom-right-radius: 5px;
+  border-bottom-left-radius: 5px;
+}
+#container.touchaid .node:after {
+  display: block;
+}
+.inner {
+  font-family: arial;
+  color: #222;
+  font-weight: bold;
+  text-align: center;
+  height: 20px;
+  width: 20px;
+  background: linear-gradient(to bottom,  #dd403c 0%,#f1952f 100%);
+  cursor: pointer;
+  border-radius: 50%;
+}
